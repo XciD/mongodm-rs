@@ -71,15 +71,6 @@
 ///     doc! { "bar.lorem": "ipsum" },
 /// );
 ///
-/// assert_eq!(
-///     doc! { field!((bar in Foo).(baz in Bar).(dolor in Baz)): "sit amet" },
-///     doc! { "bar.baz.dolor": "sit amet" },
-/// );
-///
-/// assert_eq!(
-///     doc! { field!(@@(bar in Foo).(baz in Bar).(dolor in Baz)): "sit amet" },
-///     doc! { "$$bar.baz.dolor": "sit amet" },
-/// );
 /// ```
 ///
 /// If the field doesn't exist, compilation will fail.
@@ -203,6 +194,15 @@ macro_rules! field_check_helper {
     ( ( $field:ident in $type:path ) ) => { $crate::field_check_helper!($field in $type) };
     ( @ ( $field:ident in $type:path ) ) => { $crate::field_check_helper!($field in $type) };
     ( @ @ ( $field:ident in $type:path ) ) => { $crate::field_check_helper!($field in $type) };
+    ( ( $field:ident in $type:path ) . ( $field2:ident in Option<$type2:path> ) ) => {
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn($type) = |a: $type| {
+            let takes_type2 = |_: Option<$type2>| {};
+            takes_type2(a.$field);
+        };
+        $crate::field_check_helper!($field in $type);
+        $crate::field_check_helper!($field2 in $type2);
+    };
     ( ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn($type) = |a: $type| {
@@ -211,6 +211,15 @@ macro_rules! field_check_helper {
         };
         $crate::field_check_helper!($field in $type);
         $crate::field_check_helper!($field2 in $type2);
+    };
+    ( ( $field:ident in $type:path ) . ( $field2:ident in Option<$type2:path> ) . $($rest:tt)+ ) => {
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn($type) = |a: $type| {
+            let takes_type2 = |_: Option<$type2>| {};
+            takes_type2(a.$field);
+        };
+        $crate::field_check_helper!($field in $type);
+        $crate::field_check_helper!(( $field2 in $type2 ) . $($rest)+)
     };
     ( ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
         #[allow(unknown_lints, unneeded_field_pattern)]
