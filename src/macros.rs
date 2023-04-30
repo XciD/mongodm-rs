@@ -172,6 +172,9 @@ macro_rules! field_string_helper {
     ( ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
         concat!( stringify!($field), ".", $crate::field_string_helper!($($rest).+) )
     };
+    ( ( $field:ident in $type:path as $enum:path ) $( . $rest:tt )+ ) => {
+        concat!( stringify!($field), ".", $crate::field_string_helper!($($rest).+) )
+    };
     ( @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
         concat!( "$", stringify!($field), ".", $crate::field_string_helper!($($rest).+) )
     };
@@ -212,6 +215,18 @@ macro_rules! field_check_helper {
         $crate::field_check_helper!($field in $type);
         $crate::field_check_helper!($field2 in $type2);
     };
+    ( ( $field:ident in $type:path as $enum:path ) . ( $field2:ident in $type2:path ) ) => {
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn($type) = |a: $type| {
+            let takes_type2 = |_: $type2| {};
+            match a.$field {
+                $enum(b) => takes_type2(b),
+                _ => {},
+            }
+        };
+        $crate::field_check_helper!($field in $type);
+        $crate::field_check_helper!($field2 in $type2);
+    };
     ( ( $field:ident in $type:path ) . ( $field2:ident in Option<$type2:path> ) . $($rest:tt)+ ) => {
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn($type) = |a: $type| {
@@ -226,6 +241,18 @@ macro_rules! field_check_helper {
         const _: fn($type) = |a: $type| {
             let takes_type2 = |_: $type2| {};
             takes_type2(a.$field);
+        };
+        $crate::field_check_helper!($field in $type);
+        $crate::field_check_helper!(( $field2 in $type2 ) . $($rest)+)
+    };
+    ( ( $field:ident in $type:path as $enum:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn($type) = |a: $type| {
+            let takes_type2 = |_: $type2| {};
+            match a.$field {
+                $enum(b) => takes_type2(b),
+                _ => {},
+            }
         };
         $crate::field_check_helper!($field in $type);
         $crate::field_check_helper!(( $field2 in $type2 ) . $($rest)+)
